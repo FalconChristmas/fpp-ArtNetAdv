@@ -1,0 +1,116 @@
+{
+    "settingGroups": {
+        "ArtNetTimeCode": {
+            "description": "ArtNet Timecode Support",
+            "settings": [
+                "ArtNetTimeCodeEnabled",
+                "ArtNetTimeCodeType",
+                "ArtNetTimeCodeHourIsIndex",
+                "ArtNetTimeCodeTarget",
+                "ArtNetSyncPlaylist"
+            ]
+        },
+        "ArtTriggerSupport": {
+            "description": "ArtNet Trigger Support",
+            "settings": [
+                "ArtNetTriggerEnabled",
+                "ArtNetTriggerOEMCode"
+            ]
+        }
+    },
+    "settings": {
+        "ArtNetTriggerEnabled": {
+            "name": "ArtNetTriggerEnabled",
+            "description": "Enable ArtNet Trigger Processing",
+            "tip": "Enable ArtNet Trigger Processing",
+            "restart": 1,
+            "reboot": 0,
+            "type": "checkbox",
+            "default": 0,
+            "children": {
+                "1": [
+                    "ArtNetTriggerOEMCode"
+                ]
+            }
+        },
+        "ArtNetTriggerOEMCode": {
+            "name": "ArtNetTriggerOEMCode",
+            "description": "OEM Code (hex) for Trigger",
+            "tip": "The OEM Code to look for to process triggers.  The payload will be a FPP Command JSON.",
+            "restart": 1,
+            "reboot": 0,
+            "default": "0x21s00",
+            "type": "text",
+            "size": 6,
+            "maxlength": "6"
+        },
+        "ArtNetTimeCodeEnabled": {
+            "name": "ArtNetTimeCodeEnabled",
+            "description": "Enable ArtNet Timecode",
+            "tip": "Enable ArtNet Timecode",
+            "restart": 1,
+            "reboot": 0,
+            "type": "checkbox",
+            "default": 0,
+            "children": {
+                "1": [
+                    "ArtNetTimeCodeType",
+                    "ArtNetTimeCodeHourIsIndex",
+                    "ArtNetTimeCodeTarget",
+                    "ArtNetSyncPlaylist"
+                ]
+            }
+        },
+        "ArtNetTimeCodeHourIsIndex": {
+            "name": "ArtNetTimeCodeHourIsIndex",
+            "description": "Hour Field Is Playlist Index",
+            "tip": "If enabled, the hour field of the time code will represent the index into the playlist instead of the actual hour.",
+            "restart": 1,
+            "reboot": 0,
+            "type": "checkbox",
+            "default": 0
+        },
+        "ArtNetTimeCodeType": {
+            "name": "ArtNetTimeCodeType",
+            "description": "ArtNet TimeCode Type",
+            "tip": "The format of the TimeCode",
+            "restart": 1,
+            "reboot": 0,
+            "default": 3,
+            "type": "select",
+            "options": {
+                "24fps": 0,
+                "25fps": 1,
+                "29.97fps": 2,
+                "30fps": 3
+            },
+            "fppModes": [
+                "player"
+            ]
+        },
+        "ArtNetTimeCodeTarget": {
+            "name": "ArtNetTimeCodeTarget",
+            "description": "Target IP Addresses",
+            "tip": "Target IP Addresses for ArtNet TimeCode (comma separated)",
+            "default": "255.255.255.255",
+            "type": "text",
+            "size": 37,
+            "maxlength": 256,
+            "fppModes": [
+                "player"
+            ]
+        },
+        "ArtNetSyncPlaylist": {
+            "name": "ArtNetSyncPlaylist",
+            "description": "Playlist to sync the ArtNet TimeCode",
+            "type": "select",
+            "default": "",
+            "optionsURL": "api/playlists",
+            "optionCanBeBlank": true,
+            "fppModes": [
+                "remote"
+            ]
+        }
+
+    }
+}

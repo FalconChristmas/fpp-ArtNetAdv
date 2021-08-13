@@ -1,0 +1,19 @@
+{
+	"repoName": "fpp-ArtNetAdv",
+	"name": "ArtNet Advanced Features",
+	"author": "Daniel Kulp",
+	"description": "Several Advanced ArtNet features including ArtNet Triggers and ArtNet TimeCodes",
+	"homeURL": "https://github.com/FalconChristmas/fpp-ArtNetAdv",
+	"srcURL": "https://github.com/FalconChristmas/fpp-ArtNetAdv.git",
+	"bugURL": "https://github.com/FalconChristmas/fpp-ArtNetAdv/issues",
+	"versions": [
+        {
+            "minFPPVersion": "5.1",
+            "maxFPPVersion": "0",
+            "branch": "master",
+            "sha": "",
+            "allowUpdates": 1
+        }
+	]
+}
+
