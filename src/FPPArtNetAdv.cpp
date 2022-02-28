@@ -148,7 +148,7 @@ public:
             }
             std::string pl = "";
             std::string f = settings["ArtNetSyncPlaylist"];
-            if (FileExists("/home/fpp/media/playlists/" + f + ".json")) {
+            if (FileExists(FPP_DIR_PLAYLIST("/" + f + ".json"))) {
                 pl = f;
             }
             if (pl == "--none--") {
