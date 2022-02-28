@@ -6,5 +6,5 @@ echo "Running fpp-ArtNetAdv uninstall Script"
 BASEDIR=$(dirname $0)
 cd $BASEDIR
 cd ..
-make clean
+make clean  "SRCDIR=${SRCDIR}"
 

@@ -1,6 +1,5 @@
 #include "fpp-pch.h"
 
-#include <sys/eventfd.h>
 #include <netdb.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -187,7 +186,7 @@ public:
     virtual void SendSeqSyncPacket(const std::string &filename, int frames, float seconds) override {
         SendTimeCode(getTimestampFromPlaylist());
     }
-    virtual void SendMediaSyncPacket(const std::string &filename, float seconds) {
+    virtual void SendMediaSyncPacket(const std::string &filename, float seconds) override {
         SendTimeCode(getTimestampFromPlaylist());
     }
     
@@ -268,7 +267,7 @@ public:
         }
     }
 
-    virtual void addControlCallbacks(std::map<int, std::function<bool(int)>> &callbacks) {
+    virtual void addControlCallbacks(std::map<int, std::function<bool(int)>> &callbacks) override {
         CommandManager::INSTANCE.addCommand(new ArtNetTriggerCommand());
 
         bool handlerAdded = false;
