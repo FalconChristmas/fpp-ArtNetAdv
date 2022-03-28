@@ -36,6 +36,8 @@ public:
         setDefaultSettings();
     }
     virtual ~FPPArtNetAdvPlugin() {
+        RemoveArtNetOpcodeHandler(0x9700);
+        RemoveArtNetOpcodeHandler(0x9900);
         MultiSync::INSTANCE.removeMultiSyncPlugin(this);
     }
     
