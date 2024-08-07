@@ -145,9 +145,9 @@ public:
 
             ms += seconds * 1000;
             ms += minutes * 60 * 1000;
-            if (!timecodeHourIsIndex) {
-                ms += hours * 60 * 60 * 1000;
-            }
+            ms += hours * 60 * 60 * 1000;
+
+            int idx = 0;
             std::string pl = "";
             std::string f = settings["ArtNetSyncPlaylist"];
             if (FileExists(FPP_DIR_PLAYLIST("/" + f + ".json"))) {
@@ -156,14 +156,26 @@ public:
             if (pl == "--none--") {
                 pl = "";
             }
+
+            if (timeCodePType == TimeCodeProcessingType::HOUR) {
+                constexpr int DIV = 1000 * 60 * 60;
+                idx = ms / DIV;
+                ms %= DIV;
+            } else if (timeCodePType == TimeCodeProcessingType::MIN15) {
+                constexpr int DIV = 1000 * 60 * 15;
+                idx = ms / DIV;
+                ms %= DIV;
+            } else if (timeCodePType == TimeCodeProcessingType::PLAYLIST_ITEM_DEFINED) {
+                idx = -2;
+            }
             LogDebug(VB_E131BRIDGE, "ArtNet Timestamp:  %d     Playlist: %s\n", ms, pl.c_str());
 
             if (pl != "") {
-                if (ms == 0 && hours == 0) {
+                if (ms == 0 && idx == 0) {
                     //stop command
                     MultiSync::INSTANCE.SyncStopAll();
-                } else if (timecodeHourIsIndex) {
-                    MultiSync::INSTANCE.SyncPlaylistToMS(ms, hours, pl, false);
+                } else if (idx) {
+                    MultiSync::INSTANCE.SyncPlaylistToMS(ms, idx, pl, false);
                 } else {
                     MultiSync::INSTANCE.SyncPlaylistToMS(ms, pl, false);
                 }
@@ -178,9 +190,11 @@ public:
         uint64_t ms;
         uint64_t posms;
         
-        ms = playlist->GetCurrentPosInMS(pos, posms);
-        if (timecodeHourIsIndex) {
-            ms = posms + pos * 60000 * 60;
+        ms = playlist->GetCurrentPosInMS(pos, posms, timeCodePType == TimeCodeProcessingType::PLAYLIST_ITEM_DEFINED);
+        if (timeCodePType == TimeCodeProcessingType::HOUR) {
+            ms = posms + pos * 60*000 * 60;
+        } else if (timeCodePType == TimeCodeProcessingType::MIN15) {
+            ms = posms + pos * 15*000 * 60;
         }
         return ms == 0 ? 1 : ms;  // zero is stop so we will use 1ms as a starting point
     }
@@ -273,7 +287,17 @@ public:
         CommandManager::INSTANCE.addCommand(new ArtNetTriggerCommand());
 
         bool handlerAdded = false;
-        timecodeHourIsIndex = settings["ArtNetTimeCodeHourIsIndex"] == "1";
+        std::string tcpt = settings["ArtNetTimeCodeProcessing"];
+        if (tcpt == "1") {
+            timeCodePType = TimeCodeProcessingType::HOUR;
+        } else if (tcpt == "2") {
+            timeCodePType = TimeCodeProcessingType::MIN15;
+        } else if (tcpt == "3") {
+            timeCodePType = TimeCodeProcessingType::PLAYLIST_ITEM_DEFINED;
+        } else {
+            timeCodePType = TimeCodeProcessingType::PLAYLIST_POS;
+        }
+
 
         if (settings["ArtNetTimeCodeEnabled"] == "1") {
             if (getFPPmode() != REMOTE_MODE) {
@@ -307,7 +331,7 @@ public:
         setIfNotFound("ArtNetSyncPlaylist", "");
         setIfNotFound("ArtNetTriggerEnabled", "1");
         setIfNotFound("ArtNetTimeCodeTarget", "255.255.255.255");
-        setIfNotFound("ArtNetTimeCodeHourIsIndex", "0");
+        setIfNotFound("ArtNetTimeCodeProcessing", "0");
         setIfNotFound("ArtNetTimeCodeType", "3");
         setIfNotFound("ArtNetTriggerOEMCode", "0x2100");
     }
@@ -320,10 +344,16 @@ public:
     }
     
 
+    enum class TimeCodeProcessingType {
+        PLAYLIST_POS,
+        HOUR,
+        MIN15,
+        PLAYLIST_ITEM_DEFINED
+    } timeCodePType;
+
     int triggerOem = 0x2100;
 
     int timecodeType = 3;
-    bool timecodeHourIsIndex = false;
     uint64_t lastTimecode = 0;
     int artnetSocket = -1;
     std::vector<struct mmsghdr> destMessages;
