@@ -5,6 +5,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <sys/types.h>
+#include <cinttypes>
 
 #include "FPPArtNetAdv.h"
 #include "Warnings.h"
@@ -126,7 +127,7 @@ public:
             int minutes = bridgeBuffer[16];
             int hours = bridgeBuffer[17];
             int type = bridgeBuffer[18];
-            int ms = 0;
+            uint64_t ms = 0;
             switch (type) {
             case 1: //ebu (25fps)
                 ms = frames * 40;
@@ -142,7 +143,7 @@ public:
                 ms = ((float)frames * 41.6667f);
                 break;
             }
-
+            uint64_t oms = ms;
             ms += seconds * 1000;
             ms += minutes * 60 * 1000;
             ms += hours * 60 * 60 * 1000;
@@ -167,17 +168,17 @@ public:
                 ms %= DIV;
             } else if (timeCodePType == TimeCodeProcessingType::PLAYLIST_ITEM_DEFINED) {
                 idx = -2;
+            } else {
+                idx = -1;
             }
             LogDebug(VB_E131BRIDGE, "ArtNet Timestamp:  %d     Playlist: %s\n", ms, pl.c_str());
-
+            //printf("ArtNet Timestamp:  %" PRIu64 "     Playlist: %s     %d:%d:%d.%d\n", ms, pl.c_str(), hours, minutes, seconds, (int)oms);
             if (pl != "") {
-                if (ms == 0 && idx == 0) {
+                if (oms == 0 && hours == 0 && minutes == 0 && seconds == 0) {
                     //stop command
                     MultiSync::INSTANCE.SyncStopAll();
-                } else if (idx) {
-                    MultiSync::INSTANCE.SyncPlaylistToMS(ms, idx, pl, false);
                 } else {
-                    MultiSync::INSTANCE.SyncPlaylistToMS(ms, pl, false);
+                    MultiSync::INSTANCE.SyncPlaylistToMS(ms, idx, pl, false);
                 }
             }
         }
