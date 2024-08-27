@@ -15,8 +15,8 @@
         },
         {
             "minFPPVersion": "6.0",
-            "maxFPPVersion": "0",
-            "branch": "master",
+            "maxFPPVersion": "7.99",
+            "branch": "FPP7",
             "sha": "",
             "allowUpdates": 1
         }
