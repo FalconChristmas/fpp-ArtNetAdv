@@ -193,9 +193,9 @@ public:
         
         ms = playlist->GetCurrentPosInMS(pos, posms, timeCodePType == TimeCodeProcessingType::PLAYLIST_ITEM_DEFINED);
         if (timeCodePType == TimeCodeProcessingType::HOUR) {
-            ms = posms + pos * 60*000 * 60;
+            ms = posms + pos * 60 * 1000 * 60;
         } else if (timeCodePType == TimeCodeProcessingType::MIN15) {
-            ms = posms + pos * 15*000 * 60;
+            ms = posms + pos * 15 * 1000 * 60;
         }
         return ms == 0 ? 1 : ms;  // zero is stop so we will use 1ms as a starting point
     }
