@@ -18,7 +18,7 @@
 #include "channeloutput/channeloutputthread.h"
 
 
-class FPPArtNetAdvPlugin : public FPPPlugin, public MultiSyncPlugin {
+class FPPArtNetAdvPlugin : public FPPPlugins::Plugin, public FPPPlugins::PlaylistEventPlugin, public FPPPlugins::APIProviderPlugin, public MultiSyncPlugin {
     static constexpr int TIMECODE_PACKET_LEN = 19;
     static constexpr uint8_t TIMECODE_PACKET_HEADER[TIMECODE_PACKET_LEN] = {
         'A', 'r', 't', '-', 'N', 'e', 't', 0x00, // 8-byte ID
@@ -32,7 +32,7 @@ class FPPArtNetAdvPlugin : public FPPPlugin, public MultiSyncPlugin {
     static constexpr int ARTNET_PORT = 6454;
     
 public:
-    FPPArtNetAdvPlugin() : FPPPlugin("fpp-ArtNetAdv") {
+    FPPArtNetAdvPlugin() : FPPPlugins::Plugin("fpp-ArtNetAdv"), FPPPlugins::PlaylistEventPlugin(), FPPPlugins::APIProviderPlugin() {
         LogInfo(VB_PLUGIN, "Initializing ArtNetAdv Plugin\n");
         setDefaultSettings();
     }
@@ -365,7 +365,7 @@ public:
 
 
 extern "C" {
-    FPPPlugin *createPlugin() {
+    FPPPlugins::Plugin *createPlugin() {
         return new FPPArtNetAdvPlugin();
     }
 }
