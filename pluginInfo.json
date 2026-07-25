@@ -6,6 +6,7 @@
     "homeURL": "https://github.com/FalconChristmas/fpp-ArtNetAdv",
     "srcURL": "https://github.com/FalconChristmas/fpp-ArtNetAdv.git",
     "bugURL": "https://github.com/FalconChristmas/fpp-ArtNetAdv/issues",
+    "iconURL": "https://raw.githubusercontent.com/FalconChristmas/fpp-ArtNetAdv/master/icon.png",
     "versions": [
         {
             "minFPPVersion": "5.1",
