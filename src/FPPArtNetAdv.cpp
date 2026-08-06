@@ -32,7 +32,10 @@ class FPPArtNetAdvPlugin : public FPPPlugins::Plugin, public FPPPlugins::Playlis
     static constexpr int ARTNET_PORT = 6454;
     
 public:
-    FPPArtNetAdvPlugin() : FPPPlugins::Plugin("fpp-ArtNetAdv"), FPPPlugins::PlaylistEventPlugin(), FPPPlugins::APIProviderPlugin() {
+    // The "true" asks FPP to watch config/plugin.fpp-ArtNetAdv and call
+    // settingChanged() below, so retuning timecode or triggers no longer
+    // needs an fppd restart.
+    FPPArtNetAdvPlugin() : FPPPlugins::Plugin("fpp-ArtNetAdv", true), FPPPlugins::PlaylistEventPlugin(), FPPPlugins::APIProviderPlugin() {
         LogInfo(VB_PLUGIN, "Initializing ArtNetAdv Plugin\n");
         setDefaultSettings();
     }
@@ -64,7 +67,7 @@ public:
         myCommands.clear();
         // This plugin raised the warning, so it takes it back rather than
         // leaving a stale one on the UI for a plugin that is no longer loaded.
-        WarningHolder::RemoveWarning("ArtNet TimeCode Sync enabled, but MultiSync is not enabled.  No TimeCodes will be sent.");
+        WarningHolder::RemoveWarning(MULTISYNC_WARNING);
         return nullptr;
     }
     
@@ -282,8 +285,18 @@ public:
         std::vector<std::string> ips = split(settings["ArtNetTimeCodeTarget"], ',');
 
         if (!ips.empty()) {
-            timecodeType = std::stoi(settings["ArtNetTimeCodeType"]);
+            // User input, and this now runs whenever a setting changes rather
+            // than only at startup, so a throw here would land in FPP's
+            // file-monitor callback on the main loop and take fppd down.
+            timecodeType = safeStoi(settings["ArtNetTimeCodeType"], 3);
 
+            // Cleared rather than only resized: this is re-run on a settings
+            // change, and a shorter target list would otherwise leave stale
+            // destinations behind to keep receiving timecode.
+            destMessages.clear();
+            destIOVs.clear();
+            destBuffers.clear();
+            destAddresses.clear();
             destMessages.resize(ips.size());
             destIOVs.resize(ips.size());
             destBuffers.resize(ips.size());
@@ -304,7 +317,7 @@ public:
             }
             MultiSync::INSTANCE.addMultiSyncPlugin(this);
             if (!MultiSync::INSTANCE.isMultiSyncEnabled()) {
-                WarningHolder::AddWarning("ArtNet TimeCode Sync enabled, but MultiSync is not enabled.  No TimeCodes will be sent.");
+                WarningHolder::AddWarning(MULTISYNC_WARNING);
             }
             artnetSocket = CreateArtNetSocket();
         }
@@ -315,7 +328,36 @@ public:
         myCommands.push_back(trigger);
         CommandManager::INSTANCE.addCommand(trigger);
 
-        bool handlerAdded = false;
+        // Nothing to hand FPP here: the ArtNet receive descriptor is shared
+        // with e131bridge, which owns its epoll registration and puts it in the
+        // set for as long as any opcode handler wants packets. Registering it
+        // from here would replace whatever callback the bridge had, and
+        // withdrawing it on unload would stop the bridge receiving ArtNet.
+        applyConfiguration();
+    }
+
+    // Called by FPP when config/plugin.fpp-ArtNetAdv changes; the base class has
+    // already updated settings[key]. Main loop, so reinstalling the handlers
+    // inline is safe.
+    virtual void settingChanged(const std::string &key, const std::string &value) override {
+        LogInfo(VB_PLUGIN, "ArtNetAdv: %s changed, reconfiguring\n", key.c_str());
+        // Adding and removing the opcode handlers is enough - e131bridge puts
+        // the shared ArtNet socket in and out of the epoll set to match.
+        applyConfiguration();
+    }
+
+    // Reinstall the opcode handlers and the timecode sender from the current
+    // settings. Idempotent - it withdraws whatever is in place first - which is
+    // what lets a settings change take effect without restarting fppd.
+    void applyConfiguration() {
+        // Withdraw first: these are lambdas capturing this, held in FPP's opcode
+        // table, and InitializeTimeCodeSend() re-adds the MultiSync plugin.
+        RemoveArtNetOpcodeHandler(0x9700);
+        RemoveArtNetOpcodeHandler(0x9900);
+        MultiSync::INSTANCE.removeMultiSyncPlugin(this);
+        WarningHolder::RemoveWarning(MULTISYNC_WARNING);
+        lastTimecode = 0;
+
         std::string tcpt = settings["ArtNetTimeCodeProcessing"];
         if (tcpt == "1") {
             timeCodePType = TimeCodeProcessingType::HOUR;
@@ -327,7 +369,6 @@ public:
             timeCodePType = TimeCodeProcessingType::PLAYLIST_POS;
         }
 
-
         if (settings["ArtNetTimeCodeEnabled"] == "1") {
             if (getFPPmode() != REMOTE_MODE) {
                 InitializeTimeCodeSend();
@@ -336,7 +377,6 @@ public:
                     return Bridge_ProcessArtNetTimeCode(bridgeBuffer, packetTime);
                 };
                 AddArtNetOpcodeHandler(0x9700, f);
-                handlerAdded = true;
             }
         }
         if (settings["ArtNetTriggerEnabled"] == "1") {
@@ -344,15 +384,31 @@ public:
                 return Bridge_ProcessArtNetTrigger(bridgeBuffer, packetTime);
             };
             AddArtNetOpcodeHandler(0x9900, f);
-            triggerOem = std::stoul(settings["ArtNetTriggerOEMCode"], nullptr, 16);
-            handlerAdded = true;
+            // User input, and this now runs whenever the setting changes rather
+            // than only at startup - std::stoul() throwing inside FPP's
+            // file-monitor callback would take fppd down.
+            triggerOem = safeStoulHex(settings["ArtNetTriggerOEMCode"], 0x2100);
         }
-        if (handlerAdded) {
-            std::function<bool(int)> f = [](int i) {
-                return Bridge_ReceiveArtNetData();
-            };
-            callbacks[CreateArtNetSocket()] = f;
+    }
+    static int safeStoi(const std::string &s, int defVal) {
+        try {
+            if (!s.empty()) {
+                return std::stoi(s);
+            }
+        } catch (const std::exception &e) {
+            LogErr(VB_PLUGIN, "ArtNetAdv: bad numeric setting \"%s\": %s - using %d\n", s.c_str(), e.what(), defVal);
         }
+        return defVal;
+    }
+    static int safeStoulHex(const std::string &s, int defVal) {
+        try {
+            if (!s.empty()) {
+                return (int)std::stoul(s, nullptr, 16);
+            }
+        } catch (const std::exception &e) {
+            LogErr(VB_PLUGIN, "ArtNetAdv: bad OEM code \"%s\": %s - using 0x%X\n", s.c_str(), e.what(), defVal);
+        }
+        return defVal;
     }
     
     void setDefaultSettings() {
@@ -386,6 +442,8 @@ public:
     uint64_t lastTimecode = 0;
     int artnetSocket = -1;
     std::vector<Command*> myCommands;
+    static constexpr const char* MULTISYNC_WARNING =
+        "ArtNet TimeCode Sync enabled, but MultiSync is not enabled.  No TimeCodes will be sent.";
     std::vector<struct mmsghdr> destMessages;
     std::vector<struct sockaddr_in> destAddresses;
     std::vector<struct iovec> destIOVs;
