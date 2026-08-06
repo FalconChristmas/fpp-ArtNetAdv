@@ -37,9 +37,35 @@ public:
         setDefaultSettings();
     }
     virtual ~FPPArtNetAdvPlugin() {
+        // Everything here is also done in shutdown(); both are idempotent, and
+        // keeping them means a teardown path that does not go through
+        // shutdown() still leaves nothing pointing at this object.
         RemoveArtNetOpcodeHandler(0x9700);
         RemoveArtNetOpcodeHandler(0x9900);
         MultiSync::INSTANCE.removeMultiSyncPlugin(this);
+    }
+
+    // Withdraw everything holding a pointer into this plugin. A destructor is
+    // too late for the MultiSync registration in particular: SendSeqSyncPacket()
+    // is called from the sequence/media path, so leaving it registered while the
+    // object is being destroyed is a call into a half-destroyed plugin.
+    virtual std::function<bool()> shutdown() override {
+        // Lambdas capturing 'this', held in FPP's ArtNet opcode table.
+        RemoveArtNetOpcodeHandler(0x9700);
+        RemoveArtNetOpcodeHandler(0x9900);
+        MultiSync::INSTANCE.removeMultiSyncPlugin(this);
+        // ArtNetTriggerCommand is declared in this plugin, so its vtable lives
+        // in this .so. removeCommand() only unregisters - CommandManager owns
+        // what stays in its registry - so taking it back means deleting it.
+        for (Command* c : myCommands) {
+            CommandManager::INSTANCE.removeCommand(c);
+            delete c;
+        }
+        myCommands.clear();
+        // This plugin raised the warning, so it takes it back rather than
+        // leaving a stale one on the UI for a plugin that is no longer loaded.
+        WarningHolder::RemoveWarning("ArtNet TimeCode Sync enabled, but MultiSync is not enabled.  No TimeCodes will be sent.");
+        return nullptr;
     }
     
     static in_addr_t toInetAddr(const std::string& ipAddress, bool& valid) {
@@ -285,7 +311,9 @@ public:
     }
 
     virtual void addControlCallbacks(std::map<int, std::function<bool(int)>> &callbacks) override {
-        CommandManager::INSTANCE.addCommand(new ArtNetTriggerCommand());
+        Command* trigger = new ArtNetTriggerCommand();
+        myCommands.push_back(trigger);
+        CommandManager::INSTANCE.addCommand(trigger);
 
         bool handlerAdded = false;
         std::string tcpt = settings["ArtNetTimeCodeProcessing"];
@@ -357,12 +385,21 @@ public:
     int timecodeType = 3;
     uint64_t lastTimecode = 0;
     int artnetSocket = -1;
+    std::vector<Command*> myCommands;
     std::vector<struct mmsghdr> destMessages;
     std::vector<struct sockaddr_in> destAddresses;
     std::vector<struct iovec> destIOVs;
     std::vector<std::array<uint8_t, TIMECODE_PACKET_LEN>> destBuffers;
 };
 
+
+// Safe to dlclose() on unload: no threads, no timers, no CurlManager requests
+// and no HTTP routes. The ArtNet receive socket is registered through
+// addControlCallbacks(), so FPP withdraws it from the epoll loop before
+// shutdown() runs. shutdown() takes back the opcode handlers, the MultiSync
+// registration and the trigger command - the things that hold a pointer into
+// this library.
+FPP_PLUGIN_SUPPORTS_UNLOAD()
 
 extern "C" {
     FPPPlugins::Plugin *createPlugin() {
