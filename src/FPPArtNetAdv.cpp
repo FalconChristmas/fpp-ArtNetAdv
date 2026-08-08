@@ -120,7 +120,17 @@ public:
             packet[15] = oemInt & 0xFF;
             packet[16] = std::stol(key);
             packet[17] = std::stol(subkey);
-            strcpy((char *)&packet[18], args[4].c_str());
+
+            // The payload is free-form text from the command config, so bound it
+            // to whatever is left of the packet after the 18-byte ArtTrigger
+            // header (keeping one byte for the trailing null) instead of letting
+            // a long value run off the end of the buffer.
+            std::string payload = args[4];
+            if (payload.length() > sizeof(packet) - 19) {
+                payload.resize(sizeof(packet) - 19);
+                LogWarn(VB_COMMAND, "ArtTrigger payload too long, truncated to %d bytes\n", (int)payload.length());
+            }
+            memcpy(&packet[18], payload.c_str(), payload.length() + 1);
 
             int socket = CreateArtNetSocket();
             struct sockaddr_in dest_addr;
@@ -129,7 +139,7 @@ public:
             dest_addr.sin_addr.s_addr = addr;
             dest_addr.sin_family = AF_INET;
             dest_addr.sin_port = htons(ARTNET_PORT);
-            sendto(socket, packet, 19 + args[4].length(), 0, (struct sockaddr*)&dest_addr, sizeof(dest_addr));
+            sendto(socket, packet, 19 + payload.length(), 0, (struct sockaddr*)&dest_addr, sizeof(dest_addr));
             return std::make_unique<Command::Result>("ArtTrigger Sent");
         }
     };
