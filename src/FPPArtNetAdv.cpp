@@ -8,6 +8,7 @@
 #include <cinttypes>
 
 #include "FPPArtNetAdv.h"
+#include "common.h"
 #include "Warnings.h"
 #include "e131bridge.h"
 #include "commands/Commands.h"
