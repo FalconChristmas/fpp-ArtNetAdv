@@ -34,5 +34,33 @@
             "sha": "",
             "allowUpdates": 1
         }
-    ]
+    ],
+    "privacy": {
+        "summary": "Sends timecode and trigger packets to the ArtNet devices you list on your network. Once you turn triggers on, any device on your network can run FPP commands; nothing goes online.",
+        "sends": [
+            {
+                "to": "the timecode target addresses you enter (your whole network by default)",
+                "what": "the running playlist's position as ArtNet timecode",
+                "why": "so other show software on your network can follow FPP's playback",
+                "alwaysOn": false
+            },
+            {
+                "to": "the target address given in the Send ArtNet Trigger command",
+                "what": "an ArtNet trigger with the key, subkey and text you put in the command",
+                "why": "to trigger other ArtNet devices from a playlist or command",
+                "alwaysOn": false
+            }
+        ],
+        "collects": [],
+        "sensors": [],
+        "remoteAccess": "lan",
+        "systemChanges": [
+            {
+                "kind": "network",
+                "what": "Opens FPP's ArtNet port (UDP 6454) on every network interface to receive triggers and timecode, once either is turned on"
+            }
+        ],
+        "closedCode": false,
+        "other": "With trigger processing turned on, any device on your network that sends an ArtTrigger packet with the matching OEM code (default 0x2100) can run any FPP command, with no password. When FPP is a remote, incoming ArtNet timecode can start, stop and seek the chosen playlist. ArtNet is plain UDP, not encrypted. The plugin's settings file (config/plugin.fpp-ArtNetAdv) stays after uninstall."
+    }
 }
