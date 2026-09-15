@@ -425,7 +425,10 @@ public:
     void setDefaultSettings() {
         setIfNotFound("ArtNetTimeCodeEnabled", "0");
         setIfNotFound("ArtNetSyncPlaylist", "");
-        setIfNotFound("ArtNetTriggerEnabled", "1");
+        // Off until the operator turns it on: a trigger runs any FPP command
+        // sent from the network with no authentication, and settings.json
+        // already declares the box unticked by default.
+        setIfNotFound("ArtNetTriggerEnabled", "0");
         setIfNotFound("ArtNetTimeCodeTarget", "255.255.255.255");
         setIfNotFound("ArtNetTimeCodeProcessing", "0");
         setIfNotFound("ArtNetTimeCodeType", "3");
