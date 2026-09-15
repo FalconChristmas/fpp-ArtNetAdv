@@ -36,7 +36,7 @@
         }
     ],
     "privacy": {
-        "summary": "Sends timecode and trigger packets to the ArtNet devices you list on your network. Once you turn triggers on, any device on your network can run FPP commands; nothing goes online.",
+        "summary": "Sends timecode and trigger packets to the ArtNet devices you list on your network. Once you turn triggers on, any device on your network can run FPP commands. It contacts nothing online by itself.",
         "sends": [
             {
                 "to": "the timecode target addresses you enter (your whole network by default)",
@@ -57,7 +57,7 @@
         "systemChanges": [
             {
                 "kind": "network",
-                "what": "Opens FPP's ArtNet port (UDP 6454) on every network interface to receive triggers and timecode, once either is turned on"
+                "what": "Opens FPP's ArtNet port (UDP 6454) on every interface once timecode or triggers are on; reads triggers, remote timecode"
             }
         ],
         "closedCode": false,
