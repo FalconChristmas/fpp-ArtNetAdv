@@ -211,7 +211,7 @@ public:
             } else {
                 idx = -1;
             }
-            LogDebug(VB_E131BRIDGE, "ArtNet Timestamp:  %d     Playlist: %s\n", ms, pl.c_str());
+            LogDebug(VB_E131BRIDGE, "ArtNet Timestamp:  %" PRIu64 "     Playlist: %s\n", ms, pl.c_str());
             //printf("ArtNet Timestamp:  %" PRIu64 "     Playlist: %s     %d:%d:%d.%d\n", ms, pl.c_str(), hours, minutes, seconds, (int)oms);
             if (pl != "") {
                 if (oms == 0 && hours == 0 && minutes == 0 && seconds == 0) {
